@@ -1,8 +1,9 @@
 import {PostReport, CommentReport} from "@devvit/protos";
-import {Context, OnTriggerEvent, RedditAPIClient, SettingsValues} from "@devvit/public-api";
-import {getUsernameFromUserId} from "../helpers/redditHelpers.js";
+import {TriggerContext, OnTriggerEvent, RedditAPIClient, SettingsValues} from "@devvit/public-api";
+import {asT2ID, asT3ID} from "@devvit/shared-types/tid.js";
+import {getUsernameFromUserId, ignoreReportsByPostId} from "devvit-helpers";
 
-export async function onReport (event: OnTriggerEvent<PostReport> | OnTriggerEvent<CommentReport>, context: Context) {
+export async function onReport (event: OnTriggerEvent<PostReport> | OnTriggerEvent<CommentReport>, context: TriggerContext) {
     console.log("Got report event!");
 
     const settings = await context.settings.getAll();
@@ -19,31 +20,25 @@ export async function onReport (event: OnTriggerEvent<PostReport> | OnTriggerEve
 }
 
 async function onPostReport (event: OnTriggerEvent<PostReport>, reddit: RedditAPIClient, settings: SettingsValues) {
+    const post = event.post;
     const authorId = event.post?.authorId ?? "";
     const ignorableAuthors = settings["ignorableAuthors"]?.toString().toLowerCase().split(",") ?? "";
     const enableIgnoreKeywordTitle = settings["enableIgnoreKeywordTitle"]?.toString() ?? "";
     const enableIgnoreKeywordBody = settings["enableIgnoreKeywordBody"]?.toString() ?? "";
-    if (!authorId || !ignorableAuthors) {
-        console.log("No author ID or ignorable authors");
+    if (!authorId || !ignorableAuthors || !post) {
+        throw new Error(`No author ID, ignorable authors, or post data: ${JSON.stringify(event)}`);
     }
+    console.log(`Got report event for ${post.id} by ${authorId}`);
 
-    console.log(`Got report event for ${event.post?.id ?? "post!"}`);
-
-    const author = (await getUsernameFromUserId(reddit, authorId)).toLowerCase();
+    const author = (await getUsernameFromUserId(reddit, asT2ID(authorId))).toLowerCase();
     console.log(ignorableAuthors);
     console.log(author);
-    if (author && ignorableAuthors.includes(author)) {
-        const post = await reddit.getPostById(event.post?.id ?? "");
-        if (post) {
-            if (post.title.includes(enableIgnoreKeywordTitle) || (post.body ?? "").includes(enableIgnoreKeywordBody)) {
-                console.log(`Ignoring ${post.id} reports!`);
-                post.approve().catch(() => console.error(`Failed to approve ${post.id}!`));
-                post.ignoreReports().catch(() => console.error(`Failed to ignore ${post.id} reports!`));
-            } else {
-                console.log(`No keyword in ${post.id}!`);
-            }
+    if (ignorableAuthors.includes(author)) {
+        if (post.title.includes(enableIgnoreKeywordTitle) || (post.selftext ?? "").includes(enableIgnoreKeywordBody)) {
+            console.log(`Ignoring ${post.id} reports!`);
+            ignoreReportsByPostId(reddit, asT3ID(post.id)).catch(() => console.error(`Failed to ignore ${post.id} reports!`));
         } else {
-            console.log("No post?");
+            console.log(`No keyword in ${post.id}!`);
         }
     } else {
         console.log("No author or author not in ignorable authors.");
@@ -51,33 +46,28 @@ async function onPostReport (event: OnTriggerEvent<PostReport>, reddit: RedditAP
 }
 
 async function onCommentReport (event: OnTriggerEvent<CommentReport>, reddit: RedditAPIClient, settings: SettingsValues) {
+    const comment = event.comment;
     const authorId = event.comment?.author ?? "";
     const ignorableAuthors = settings["ignorableAuthors"]?.toString().toLowerCase().split(",") ?? "";
     const enableIgnoreKeyword = settings["enableIgnoreKeywordBody"]?.toString() ?? "";
-    if (!authorId || !ignorableAuthors) {
-        console.log("No author ID or ignorable authors");
+    if (!authorId || !ignorableAuthors || !comment) {
+        throw new Error(`No author ID, ignorable authors, or comment data: ${JSON.stringify(event)}`);
     }
+    console.log(`Got report event for ${comment.id} by ${authorId}`);
 
-    console.log(`Got report event for ${event.comment?.id ?? "comment!"}`);
-
-    const author = (await getUsernameFromUserId(reddit, authorId)).toLowerCase();
-    console.log(ignorableAuthors);
+    const author = (await getUsernameFromUserId(reddit, asT2ID(authorId))).toLowerCase();
     console.log(author);
-    if (author && ignorableAuthors.includes(author)) {
-        const comment = await reddit.getCommentById(event.comment?.id ?? "");
-        if (comment) {
-            if (comment.body.includes(enableIgnoreKeyword)) {
-                console.log(`Ignoring ${comment.id} reports!`);
-                comment.approve().catch(() => console.error(`Failed to approve ${comment.id}!`));
-                // Apparently this doesn't exist for comments yet?
-                // comment.ignoreReports().catch(() => console.error(`Failed to ignore ${comment.id} reports!`));
-            } else {
-                console.log(`No keyword in ${comment.id}!`);
-            }
+    console.log(ignorableAuthors);
+    if (ignorableAuthors.includes(author)) {
+        if (comment.body.includes(enableIgnoreKeyword)) {
+            console.log(`Ignoring ${comment.id} reports!`);
+            reddit.approve(comment.id).catch(() => console.error(`Failed to approve ${comment.id}!`));
+            // Apparently this doesn't exist for comments yet?
+            // comment.ignoreReports().catch(() => console.error(`Failed to ignore ${comment.id} reports!`));
         } else {
-            console.log("No comment?");
+            console.log(`No keyword in ${comment.id}!`);
         }
     } else {
-        console.log("No author or author not in ignorable authors.");
+        console.log("Author not in ignorable authors.");
     }
 }

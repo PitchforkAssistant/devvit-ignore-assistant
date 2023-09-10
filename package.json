@@ -10,7 +10,9 @@
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
-    "@devvit/public-api": "0.10.2"
+    "@devvit/public-api": "0.10.4",
+    "@devvit/shared-types": "0.10.4",
+    "devvit-helpers": "0.2.6"
   },
   "devDependencies": {
     "@devvit/tsconfig": "0.10.2",
