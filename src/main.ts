@@ -1,6 +1,6 @@
 import {Devvit} from "@devvit/public-api";
 import {onReport} from "./handlers/events.js";
-import {validateAllowedAuthors} from "./handlers/validators.js";
+import {validateUsernameList} from "devvit-helpers";
 
 Devvit.configure({
     redditAPI: true,
@@ -13,7 +13,7 @@ Devvit.addSettings([
         defaultValue: "AutoModerator,subreddit-ModTeam",
         label: "Auto-ignorable authors (comma-separated usernames)",
         helpText: "Comments and posts made by these users will be auto-ignored if they contain the configured keyword.",
-        onValidate: validateAllowedAuthors,
+        onValidate: validateUsernameList,
     },
     {
         type: "string",
