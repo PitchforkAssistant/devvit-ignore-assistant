@@ -27,9 +27,9 @@ async function onPostReport (event: OnTriggerEvent<PostReport>, reddit: RedditAP
 
     const author = (await getUsernameFromUserId(reddit, post.authorId)).toLowerCase();
     if (ignorableAuthors.includes(author)) {
-        if (post.title.includes(enableIgnoreKeywordTitle) || (post.selftext ?? "").includes(enableIgnoreKeywordBody)) {
+        if (post.title.includes(enableIgnoreKeywordTitle) || post.selftext.includes(enableIgnoreKeywordBody)) {
             console.log(`Ignoring ${post.id} reports!`);
-            await ignoreReportsByPostId(reddit, post.id).catch(e => console.error(`Failed to ignore ${post.id} reports!`, e));
+            ignoreReportsByPostId(reddit, post.id).catch(e => console.error(`Failed to ignore ${post.id} reports!`, e));
         }
     }
 }

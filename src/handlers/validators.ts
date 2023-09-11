@@ -1,7 +1,7 @@
 import {SettingsFormFieldValidatorEvent} from "@devvit/public-api";
 
 export async function validateAllowedAuthors (event: SettingsFormFieldValidatorEvent<string>) {
-    const allowedAuthorsString = event?.value?.toString() ?? "";
+    const allowedAuthorsString = event.value?.toString() ?? "";
     if (!allowedAuthorsString) {
         return;
     } else {
